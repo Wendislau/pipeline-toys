@@ -25,6 +25,7 @@ CONTAGENS = {
     "marts.ranking_lojas": 50,
     "marts.pareto_produtos": 35,
     "marts.receita_por_tipo_localizacao": 4,
+    "marts.vendas_mes_loja_produto": 22_931,
 }
 
 CHAVES = {
@@ -41,6 +42,7 @@ CHAVES = {
     "marts.ranking_lojas": "store_id",
     "marts.pareto_produtos": "product_id",
     "marts.receita_por_tipo_localizacao": "tipo_localizacao",
+    "marts.vendas_mes_loja_produto": "mes, store_id, product_id",
 }
 
 MARTS_COM_RECEITA = [t for t in CONTAGENS if t.startswith("marts.")]
@@ -78,3 +80,15 @@ def test_receita_total_refined(con):
 @pytest.mark.parametrize("tabela", MARTS_COM_RECEITA)
 def test_receita_total_bate_com_refined(con, tabela):
     assert escalar(con, f"SELECT sum(receita) FROM {tabela}") == RECEITA_TOTAL
+
+
+def test_mart_do_painel_bate_unidades_e_margem_com_refined(con):
+    """O painel agrega tudo a partir de marts.vendas_mes_loja_produto."""
+    refined = con.execute(
+        "SELECT sum(s.units), sum(s.units * (p.product_price - p.product_cost)) "
+        "FROM refined.sales s JOIN refined.products p USING (product_id)"
+    ).fetchall()[0]
+    mart = con.execute(
+        "SELECT sum(unidades), sum(margem) FROM marts.vendas_mes_loja_produto"
+    ).fetchall()[0]
+    assert mart == refined

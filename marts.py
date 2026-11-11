@@ -26,6 +26,7 @@ MARTS_COM_RECEITA_TOTAL = [
     "ranking_lojas",
     "pareto_produtos",
     "receita_por_tipo_localizacao",
+    "vendas_mes_loja_produto",
 ]
 
 

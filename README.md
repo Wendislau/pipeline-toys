@@ -32,8 +32,8 @@ dados novos antes disso, use *Clear cache* no menu do Streamlit.
 | raw | `ingestao.py` | Lê os 4 CSVs com todas as colunas como texto |
 | refined | `transformacao.py` | Tipagem estrita, PK/FK e limpeza, conforme [`specs/refined.md`](specs/refined.md) |
 | marts | `marts.py` + `sql/marts/*.sql` | Cada arquivo SQL vira `marts.<nome sem o número>` |
-| testes | `tests/` | Contagens, unicidade das chaves e receita total entre refined e marts |
-| painel | `app.py` | KPIs e gráficos, só com SELECT nos marts |
+| testes | `tests/` | Contagens, unicidade das chaves, receita total entre refined e marts e fumaça do painel |
+| painel | `app.py` | Painel interativo, só com SELECT em `marts.vendas_mes_loja_produto` |
 
 ## Contagens
 
@@ -48,8 +48,21 @@ dados novos antes disso, use *Clear cache* no menu do Streamlit.
 | marts.ranking_lojas | 50 |
 | marts.pareto_produtos | 35 |
 | marts.receita_por_tipo_localizacao | 4 |
+| marts.vendas_mes_loja_produto | 22.931 |
 
 Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts.
+
+## Painel
+
+- **Filtros** na barra lateral: intervalo de meses, cidade, tipo de localização e categoria.
+  Viram `WHERE` com parâmetros sobre `marts.vendas_mes_loja_produto` (grão mês × loja × produto);
+  toda agregação é feita em SQL.
+- **KPIs** (receita, margem, margem %, unidades) com variação vs. o mesmo período do ano anterior,
+  quando o período começa em 01/2018 ou depois.
+- **Evolução mensal**: alterna receita / margem / unidades e pode quebrar por categoria.
+- **Clique numa barra de receita por categoria** filtra o resto do painel; clique numa área
+  vazia do gráfico ou em *Restaurar filtros* para limpar.
+- Cada seção tem *Ver tabela*, com mês em MM/AAAA, % e US$ com separador de milhar.
 
 ## Premissas
 
