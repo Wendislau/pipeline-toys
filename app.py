@@ -602,3 +602,62 @@ l2.altair_chart(
     width="stretch",
 )
 tabela(localizacao)
+
+# --- Estoque --------------------------------------------------------------------
+
+MART_ESTOQUE = "marts.cobertura_estoque"
+st.subheader("Estoque")
+st.caption(
+    "O estoque é uma foto do fim do período, sem data, comparada com a média diária de "
+    "vendas dos últimos 90 dias do dado. Os filtros de cidade, tipo de localização e "
+    "categoria valem aqui; o de meses não. Pares vendidos sem registro no estoque "
+    "(ex.: Jenga em 24 lojas) não aparecem."
+)
+where_estoque = (
+    "list_contains(?::VARCHAR[], cidade) "
+    "AND list_contains(?::VARCHAR[], tipo_localizacao) "
+    "AND list_contains(?::VARCHAR[], categoria)"
+)
+params_estoque = (filtro.cidades, filtro.tipos, filtro.categorias)
+por_status = consulta(
+    f"SELECT status, count(*) AS itens FROM {MART_ESTOQUE} WHERE {where_estoque} GROUP BY status",
+    params_estoque,
+)
+itens_por_status = dict(zip(por_status["status"], por_status["itens"]))
+e1, e2, e3 = st.columns(3)
+for coluna, (status, rotulo) in zip(
+    (e1, e2, e3),
+    [
+        ("ruptura", "Em ruptura (estoque zero)"),
+        ("critico", "Crítico (< 7 dias)"),
+        ("ok", "OK"),
+    ],
+):
+    coluna.metric(rotulo, br(f"{itens_por_status.get(status, 0):,}"), border=True)
+
+alertas = consulta(
+    f"""
+    SELECT status, replace(loja, 'Maven Toys ', '') AS loja, produto, categoria,
+           stock_on_hand, unidades_90d,
+           media_diaria_unidades, dias_cobertura
+    FROM {MART_ESTOQUE}
+    WHERE status IN ('ruptura', 'critico') AND {where_estoque}
+    ORDER BY status DESC, dias_cobertura, loja, produto
+    """,
+    params_estoque,
+)
+st.markdown(f"**Itens em ruptura e críticos** ({br(f'{len(alertas):,}')})")
+st.dataframe(
+    alertas,
+    hide_index=True,
+    column_config={
+        "stock_on_hand": st.column_config.NumberColumn("estoque", format="%,d"),
+        "unidades_90d": st.column_config.NumberColumn("unidades 90 dias", format="%,d"),
+        "media_diaria_unidades": st.column_config.NumberColumn(
+            "média diária", format="%.2f"
+        ),
+        "dias_cobertura": st.column_config.NumberColumn(
+            "dias de cobertura", format="%.1f"
+        ),
+    },
+)

@@ -1,8 +1,9 @@
-"""Testes unitários do mart 01 (receita_por_mes) sobre tabelas inventadas."""
+"""Testes unitários dos marts 01 (receita_por_mes) e 07 (cobertura_estoque) com tabelas inventadas."""
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
+import pytest
 from apoio import apontar_pipeline, consultar, escrever_raw
 
 import ingestao
@@ -90,3 +91,118 @@ def test_soma_do_mart_bate_com_a_conta_total(monkeypatch, tmp_path):
     assert consultar(db_path, "SELECT sum(receita) FROM marts.receita_por_mes") == [
         (total,)
     ]
+
+
+# --- Mart 07: cobertura de estoque ----------------------------------------------
+
+FIM = date(2018, 9, 30)  # última venda do dado inventado; define o fim da janela
+INICIO_JANELA = FIM - timedelta(days=89)  # 90 dias contando o próprio fim: 2018-07-03
+
+PRODUTOS_ESTOQUE = [
+    ["1", "Ruptura", "Toys", "$1.00 ", "$2.00 "],
+    ["2", "Critico", "Toys", "$1.00 ", "$2.00 "],
+    ["3", "Limite", "Toys", "$1.00 ", "$2.00 "],
+    ["4", "Borda", "Games", "$1.00 ", "$2.00 "],
+    ["5", "Parado", "Games", "$1.00 ", "$2.00 "],
+    ["6", "ForaEstoque", "Games", "$1.00 ", "$2.00 "],
+]
+LOJA_ESTOQUE = [["1", "Loja A", "Guadalajara", "Downtown", "2010-01-01"]]
+ESTOQUE_07 = [
+    # Produto 1: estoque zero com venda recente -> 'ruptura' (zero vence qualquer média).
+    ["1", "1", "0"],
+    # Produto 2: 6 unidades para média de 1/dia -> 6 dias -> 'critico'.
+    ["1", "2", "6"],
+    # Produto 3: 7 unidades para média de 1/dia -> exatamente 7 dias -> 'ok' (regra é < 7).
+    ["1", "3", "7"],
+    # Produto 4: testa as bordas da janela (ver vendas) -> 100 dias -> 'ok'.
+    ["1", "4", "50"],
+    # Produto 5: estoque sem venda na janela -> média zero, dias NULL, 'ok'.
+    ["1", "5", "5"],
+    # Produto 6 fica fora do estoque de propósito: vende, mas não pode aparecer no mart.
+]
+VENDAS_07 = [
+    # (sale_id, data, loja, produto, unidades)
+    ["1", "2018-08-15", "1", "1", "90"],  # 90 na janela -> média 1/dia
+    ["2", "2018-08-15", "1", "2", "90"],  # idem
+    ["3", "2018-08-15", "1", "3", "90"],  # idem
+    [
+        "4",
+        "2018-07-03",
+        "1",
+        "4",
+        "45",
+    ],  # primeiro dia da janela: conta (média 0,5/dia)
+    [
+        "5",
+        "2018-07-02",
+        "1",
+        "4",
+        "900",
+    ],  # véspera da janela: não conta (senão viraria crítico)
+    [
+        "6",
+        "2017-03-10",
+        "1",
+        "5",
+        "20",
+    ],  # venda antiga: fora da janela, média continua zero
+    ["7", "2018-09-30", "1", "6", "1"],  # define o fim do dado; par fora do estoque
+]
+
+
+def esperado_cobertura():
+    """Regra do mart refeita em Python a partir das linhas inventadas."""
+    esperado = {}
+    for _, produto, estoque in ESTOQUE_07:
+        unidades = sum(
+            int(u)
+            for _, data, _, p, u in VENDAS_07
+            if p == produto and INICIO_JANELA <= date.fromisoformat(data) <= FIM
+        )
+        media = unidades / 90
+        dias = int(estoque) / media if media else None
+        if int(estoque) == 0:
+            status = "ruptura"
+        elif dias is not None and dias < 7:
+            status = "critico"
+        else:
+            status = "ok"
+        esperado[int(produto)] = (int(estoque), media, dias, status)
+    return esperado
+
+
+def test_cobertura_estoque_status_e_janela_de_90_dias(monkeypatch, tmp_path):
+    raw_dir, db_path = apontar_pipeline(monkeypatch, tmp_path)
+    escrever_raw(
+        raw_dir,
+        products=PRODUTOS_ESTOQUE,
+        stores=LOJA_ESTOQUE,
+        sales=VENDAS_07,
+        inventory=ESTOQUE_07,
+    )
+    ingestao.main()
+    transformacao.main()
+    marts.main()
+
+    linhas = consultar(
+        db_path,
+        "SELECT product_id, stock_on_hand, media_diaria_unidades, dias_cobertura, status "
+        "FROM marts.cobertura_estoque ORDER BY product_id",
+    )
+    obtido = {
+        pid: (estoque, media, dias, status)
+        for pid, estoque, media, dias, status in linhas
+    }
+
+    esperado = esperado_cobertura()
+    assert (
+        obtido.keys() == esperado.keys()
+    )  # só pares do estoque: produto 6 não aparece
+    for pid, (estoque, media, dias, status) in esperado.items():
+        o_estoque, o_media, o_dias, o_status = obtido[pid]
+        assert (o_estoque, o_status) == (estoque, status), pid
+        assert o_media == pytest.approx(media), pid
+        assert o_dias == (None if dias is None else pytest.approx(dias)), pid
+    # Os quatro casos pedidos estão cobertos pelo dado inventado.
+    assert {s for *_, s in esperado.values()} == {"ruptura", "critico", "ok"}
+    assert any(media == 0 for _, media, _, _ in esperado.values())

@@ -32,7 +32,7 @@ dados novos antes disso, use *Clear cache* no menu do Streamlit.
 | raw | `ingestao.py` | Lê os 4 CSVs com todas as colunas como texto |
 | refined | `transformacao.py` | Tipagem estrita, PK/FK e limpeza, conforme [`specs/refined.md`](specs/refined.md) |
 | marts | `marts.py` + `sql/marts/*.sql` | Cada arquivo SQL vira `marts.<nome sem o número>` |
-| testes unitários | `test/` | Ingestão, transformação e mart 01 com dado inventado em banco temporário |
+| testes unitários | `test/` | Ingestão, transformação e marts 01 e 07 com dado inventado em banco temporário |
 | testes de qualidade | `tests/` | Qualidade dos dados em `toys.duckdb`: contagens, unicidade das chaves, receita total entre refined e marts e fumaça do painel |
 | painel | `app.py` | Painel interativo, só com SELECT em `marts.vendas_mes_loja_produto` |
 
@@ -50,8 +50,10 @@ dados novos antes disso, use *Clear cache* no menu do Streamlit.
 | marts.pareto_produtos | 35 |
 | marts.receita_por_tipo_localizacao | 4 |
 | marts.vendas_mes_loja_produto | 22.931 |
+| marts.cobertura_estoque | 1.593 |
 
-Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts.
+Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts de vendas
+(`cobertura_estoque` é de estoque e não tem receita).
 
 ## Painel
 
@@ -63,6 +65,9 @@ Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts.
 - **Evolução mensal**: alterna receita / margem / unidades e pode quebrar por categoria.
 - **Clique numa barra de receita por categoria** filtra o resto do painel; clique numa área
   vazia do gráfico ou em *Restaurar filtros* para limpar.
+- **Estoque**: contagem por status (ruptura, crítico < 7 dias de cobertura, ok) e tabela dos
+  itens em ruptura e críticos, a partir de `marts.cobertura_estoque` (média de vendas dos
+  últimos 90 dias do dado). Responde a cidade, tipo de localização e categoria, mas não aos meses.
 - Cada seção tem *Ver tabela*, com mês em MM/AAAA, % e US$ com separador de milhar.
 
 ## Premissas

@@ -26,6 +26,7 @@ CONTAGENS = {
     "marts.pareto_produtos": 35,
     "marts.receita_por_tipo_localizacao": 4,
     "marts.vendas_mes_loja_produto": 22_931,
+    "marts.cobertura_estoque": 1_593,
 }
 
 CHAVES = {
@@ -43,9 +44,13 @@ CHAVES = {
     "marts.pareto_produtos": "product_id",
     "marts.receita_por_tipo_localizacao": "tipo_localizacao",
     "marts.vendas_mes_loja_produto": "mes, store_id, product_id",
+    "marts.cobertura_estoque": "store_id, product_id",
 }
 
-MARTS_COM_RECEITA = [t for t in CONTAGENS if t.startswith("marts.")]
+# cobertura_estoque é de estoque (sem coluna receita): fica fora da conferência de receita.
+MARTS_COM_RECEITA = [
+    t for t in CONTAGENS if t.startswith("marts.") and t != "marts.cobertura_estoque"
+]
 
 
 @pytest.mark.parametrize("tabela, esperado", CONTAGENS.items())
