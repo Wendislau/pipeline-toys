@@ -16,5 +16,18 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.17.4",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["test", "tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["."]
+omit = ["app.py", "test*/*", ".venv/*"]
+
+[tool.coverage.report]
+fail_under = 60
+show_missing = true
