@@ -83,9 +83,25 @@ Decisões:
 - **Par (store_id, product_id):** 0 duplicatas → PK composta sem dedup.
 - **Estoque zero (77 linhas):** mantido. É um estado válido (produto em ruptura), não um
   dado faltante.
-- **Cobertura:** 1.593 de 50 × 35 = 1.750 pares possíveis. Os 157 pares ausentes **não são
-  preenchidos com 0**: a ausência pode significar "produto não comercializado na loja", e
-  não "estoque zerado". Fica registrado para a camada analítica decidir.
+- **Cobertura:** 1.593 de 50 × 35 = 1.750 pares possíveis; 157 pares ausentes. Os pares
+  ausentes **não são preenchidos com 0 nem com nenhum outro valor**. A hipótese inicial,
+  "ausência = produto não comercializado na loja", **não se sustenta para todos**:
+  contagem cruzando `refined.sales` (1.631 pares com venda) e `refined.inventory`:
+
+  | Grupo | Pares | Leitura |
+  |---|---:|---|
+  | Ausentes do estoque e sem nenhuma venda | 116 | Consistente com "não comercializado na loja" |
+  | Ausentes do estoque, com venda que parou entre 02/2017 e 03/2018 | 17 | Consistente com produto descontinuado na loja (7 produtos, ex.: Mini Basketball Hoop, Classic Dominoes) |
+  | Ausentes do estoque, Jenga, com venda até 05–09/2018 | 24 | **Não** é "não comercializado": 23 venderam a partir de 07/2018 e as vendas vão até 13/09/2018. Jenga está no estoque de só 26 das 50 lojas |
+  | No estoque e sem nenhuma venda | 3 | Estoque de 3 a 6 unidades (15 no total); produto em loja que não vendeu no período |
+
+  Os 41 pares vendidos e ausentes do estoque somam 6.232 linhas de venda (6.674 unidades).
+  Como a ausência tem pelo menos dois significados, ela não pode ser lida como "estoque
+  zerado" (o arquivo registra zero explicitamente em 77 linhas) nem como "não comercializado".
+  **Para a camada analítica:** tratar par ausente como "sem registro de estoque". Em
+  qualquer métrica de estoque ou ruptura, sinalizar Jenga à parte: a falta dele em 24 lojas
+  com venda recente é provável falha de registro no arquivo de origem, não ausência do
+  produto.
 
 ## Resumo das transformações
 
