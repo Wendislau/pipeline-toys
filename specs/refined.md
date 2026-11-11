@@ -50,7 +50,7 @@ Decisões:
 Decisões:
 - **`Cuidad de Mexico` → `Ciudad de Mexico`** (4 lojas). É erro de digitação: o próprio
   dataset grafa corretamente "Ciudad Victoria". Esta é a **única alteração de valor proposta**
-  em toda a refined. **Pendente de aprovação**; a alternativa é manter o valor original.
+  em toda a refined. **Aprovado e aplicado**.
 
 ## refined.sales — 829.262 linhas
 
@@ -92,6 +92,6 @@ Decisões:
 | Tabela | Linhas raw | Linhas refined | Alterações de valor |
 |---|---|---|---|
 | products | 35 | 35 | `$` e espaço removidos de cost/price |
-| stores | 50 | 50 | `Cuidad` → `Ciudad` (4 linhas, pendente) |
+| stores | 50 | 50 | `Cuidad` → `Ciudad` (4 linhas, aprovado e aplicado) |
 | sales | 829.262 | 829.262 | nenhuma (só tipagem e `Date` → `sale_date`) |
 | inventory | 1.593 | 1.593 | nenhuma (só tipagem) |
