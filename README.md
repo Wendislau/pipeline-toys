@@ -110,6 +110,11 @@ Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts de ve
 - **Teste que não testava.** Trocar `CAST` por `TRY_CAST` na refined não fez nenhum teste
   falhar, porque o `NOT NULL` ainda bloqueava a carga. Só falhou quando as duas proteções
   foram removidas juntas.
+- **Painel estático.** A primeira versão do painel saiu estática e sem filtros. Pego por
+  Wendislau na revisão.
+- **Testes que não eram unitários.** Os testes abriam o banco real (`toys.duckdb`) e
+  conferiam números fixos, ao contrário do que a aula 4 pede. Pego por Wendislau na revisão;
+  daí a separação entre `test/` (unitários, com dado inventado) e `tests/` (qualidade do dado).
 
 ## Origem e licença
 
