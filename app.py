@@ -628,11 +628,11 @@ itens_por_status = dict(zip(por_status["status"], por_status["itens"]))
 for coluna, (status, rotulo) in zip(
     st.columns(5),
     [
-        ("ruptura", "Em ruptura (estoque zero)"),
-        ("critico", "Crítico (< 7 dias)"),
+        ("ruptura", "Ruptura"),
+        ("critico", "Crítico"),
         ("ok", "OK"),
-        ("sem demanda", "Sem demanda (90 dias)"),
-        ("sem registro", "Sem registro de estoque"),
+        ("sem demanda", "Sem demanda"),
+        ("sem registro", "Sem registro"),
     ],
 ):
     coluna.metric(rotulo, br(f"{itens_por_status.get(status, 0):,}"), border=True)
