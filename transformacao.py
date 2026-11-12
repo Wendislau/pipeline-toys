@@ -119,7 +119,7 @@ def main() -> None:
                         f"refined.{tabela} tem {n_ref} linhas, raw.{tabela} tem {n_raw}"
                     )
                 contagens[tabela] = n_ref
-        except Exception:
+        except (duckdb.Error, RuntimeError):
             con.execute("ROLLBACK")
             raise
         con.execute("COMMIT")

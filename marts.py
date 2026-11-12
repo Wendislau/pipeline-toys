@@ -67,7 +67,7 @@ def main() -> None:
                     raise RuntimeError(
                         f"marts.{tabela}: receita {soma} difere do total {receita_total}"
                     )
-        except Exception:
+        except (duckdb.Error, RuntimeError):
             con.execute("ROLLBACK")
             raise
         con.execute("COMMIT")
