@@ -21,12 +21,12 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["test", "tests"]
+testpaths = ["tests/unit", "tests/quality"]
 pythonpath = ["."]
 
 [tool.coverage.run]
 source = ["."]
-omit = ["app.py", "test*/*", ".venv/*"]
+omit = ["app.py", "tests/*", ".venv/*"]
 
 [tool.coverage.report]
 fail_under = 60

@@ -3,7 +3,7 @@ from pathlib import Path
 import duckdb
 import pytest
 
-DB_PATH = Path(__file__).resolve().parent.parent / "toys.duckdb"
+DB_PATH = Path(__file__).resolve().parents[2] / "toys.duckdb"
 
 
 @pytest.fixture(scope="session")

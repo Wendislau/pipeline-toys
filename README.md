@@ -32,8 +32,8 @@ dados novos antes disso, use *Clear cache* no menu do Streamlit.
 | raw | `ingestao.py` | Lê os 4 CSVs com todas as colunas como texto |
 | refined | `transformacao.py` | Tipagem estrita, PK/FK e limpeza, conforme [`specs/refined.md`](specs/refined.md) |
 | marts | `marts.py` + `sql/marts/*.sql` | Cada arquivo SQL vira `marts.<nome sem o número>` |
-| testes unitários | `test/` | Ingestão, transformação e marts 01 e 07 com dado inventado em banco temporário |
-| testes de qualidade | `tests/` | Qualidade dos dados em `toys.duckdb`: contagens, unicidade das chaves, receita total entre refined e marts e fumaça do painel |
+| testes unitários | `tests/unit/` | Ingestão, transformação e marts 01 e 07 com dado inventado em banco temporário |
+| testes de qualidade | `tests/quality/` | Qualidade dos dados em `toys.duckdb`: contagens, unicidade das chaves, receita total entre refined e marts e fumaça do painel |
 | painel | `app.py` | Painel interativo, só com SELECT em `marts.vendas_mes_loja_produto` |
 
 ## Contagens
@@ -123,7 +123,7 @@ Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts de ve
   Wendislau na revisão.
 - **Testes que não eram unitários.** Os testes abriam o banco real (`toys.duckdb`) e
   conferiam números fixos, ao contrário do que a aula 4 pede. Pego por Wendislau na revisão;
-  daí a separação entre `test/` (unitários, com dado inventado) e `tests/` (qualidade do dado).
+  daí a separação entre `tests/unit/` (unitários, com dado inventado) e `tests/quality/` (qualidade do dado).
 
 ## Origem e licença
 
