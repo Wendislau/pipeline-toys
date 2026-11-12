@@ -77,6 +77,40 @@ Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts de ve
 - Pareto: classe A até 80% da receita acumulada, B até 95%, C o restante.
 - Única correção de valor na refined: `Cuidad de Mexico` → `Ciudad de Mexico` (4 lojas).
 
+## Grão das tabelas
+
+| Tabela | Uma linha é | Chave |
+|---|---|---|
+| refined.products | um produto | `product_id` |
+| refined.stores | uma loja | `store_id` |
+| refined.sales | uma venda (transação) | `sale_id` |
+| refined.inventory | um par loja × produto no estoque | `store_id, product_id` |
+| marts.receita_por_mes | um mês | `mes` |
+| marts.receita_margem_por_categoria | uma categoria de produto | `categoria` |
+| marts.ranking_lojas | uma loja | `store_id` |
+| marts.pareto_produtos | um produto | `product_id` |
+| marts.receita_por_tipo_localizacao | um tipo de localização da loja | `tipo_localizacao` |
+| marts.vendas_mes_loja_produto | um mês × loja × produto com pelo menos uma venda | `mes, store_id, product_id` |
+| marts.cobertura_estoque | um par loja × produto do estoque | `store_id, product_id` |
+
+## Onde a IA errou (e como foi pego)
+
+- **Contagem de duplicatas.** A contagem de linhas duplicadas em `sales` deu 829.261,
+  porque a consulta usava `GROUP BY ALL` só com `count(*)`. Recontado com `DISTINCT`, deu 0.
+- **Hipótese da spec sobre estoque.** A spec supunha que estoque ausente significava
+  "produto não vendido na loja". A hipótese caiu na conferência: 41 pares loja × produto
+  vendidos não estão no estoque, 24 deles do Jenga.
+- **Status da spec.** A spec ficou marcada como "pendente de aprovação" depois de a decisão
+  já estar aplicada no código.
+- **Painel.** Nomes de loja cortados, marcadores da classe C quase invisíveis, gráfico
+  cortado na largura da coluna, *Restaurar filtros* que não fazia nada no segundo clique e
+  variação em pontos percentuais formatada como "p,p,".
+- **Afirmação falsa no README.** O README dizia que o painel travava o banco durante o
+  pipeline. Testado, a afirmação se mostrou falsa e foi corrigida.
+- **Teste que não testava.** Trocar `CAST` por `TRY_CAST` na refined não fez nenhum teste
+  falhar, porque o `NOT NULL` ainda bloqueava a carga. Só falhou quando as duas proteções
+  foram removidas juntas.
+
 ## Origem e licença
 
 Os dados são o **Mexico Toy Sales**, da Maven Analytics, obtidos via Kaggle:
