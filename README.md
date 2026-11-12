@@ -116,3 +116,7 @@ Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts de ve
 Os dados são o **Mexico Toy Sales**, da Maven Analytics, obtidos via Kaggle:
 <https://www.kaggle.com/datasets/mysarahmadbhat/toy-sales>.
 Os arquivos são redistribuídos comprimidos em `raw/` (`.csv.gz`), sem alteração no conteúdo.
+
+Os `.csv.gz` ficam versionados em `raw/` de propósito, como no repositório do curso: são
+3,7 MB comprimidos, o projeto roda logo depois de um `git clone`, sem conta no Kaggle, e o
+`.gitignore` (`raw/*.csv`) impede commitar os CSVs crus.
