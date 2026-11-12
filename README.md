@@ -1,5 +1,10 @@
 # pipeline-toys
 
+Projeto da aceleração EmpregaDados, inspirado no pipeline-olist. Stack: Python, DuckDB, SQL,
+pytest, Streamlit e uv. Construído com IA como copiloto e revisão humana de cada etapa.
+
+![Painel em Streamlit: filtros na barra lateral, KPIs de receita, margem e unidades e a evolução mensal da receita](docs/painel.png)
+
 Pipeline local em DuckDB sobre os dados de vendas da Maven Toys (lojas de brinquedos
 no México, jan/2017 a set/2018), em três camadas: `raw` → `refined` → `marts`,
 com testes em pytest e um painel em Streamlit.
@@ -27,14 +32,22 @@ dados novos antes disso, use *Clear cache* no menu do Streamlit.
 
 ## Camadas
 
+```mermaid
+flowchart LR
+    csv["raw/*.csv.gz"] -- "ingestao.py" --> raw[(raw)]
+    raw -- "transformacao.py" --> refined[(refined)]
+    refined -- "marts.py + sql/marts/*.sql" --> marts[(marts)]
+    marts -- "app.py" --> painel["Streamlit"]
+```
+
 | Etapa | Arquivo | O que faz |
 |---|---|---|
-| raw | `ingestao.py` | Lê os 4 CSVs com todas as colunas como texto |
-| refined | `transformacao.py` | Tipagem estrita, PK/FK e limpeza, conforme [`specs/refined.md`](specs/refined.md) |
-| marts | `marts.py` + `sql/marts/*.sql` | Cada arquivo SQL vira `marts.<nome sem o número>` |
+| raw (≈ bronze) | `ingestao.py` | Lê os 4 CSVs com todas as colunas como texto |
+| refined (≈ silver) | `transformacao.py` | Tipagem estrita, PK/FK e limpeza, conforme [`specs/refined.md`](specs/refined.md) |
+| marts (≈ gold) | `marts.py` + `sql/marts/*.sql` | Cada arquivo SQL vira `marts.<nome sem o número>` |
 | testes unitários | `tests/unit/` | Ingestão, transformação e marts 01 e 07 com dado inventado em banco temporário |
 | testes de qualidade | `tests/quality/` | Qualidade dos dados em `toys.duckdb`: contagens, unicidade das chaves, receita total entre refined e marts e fumaça do painel |
-| painel | `app.py` | Painel interativo, só com SELECT em `marts.vendas_mes_loja_produto` |
+| painel | `app.py` | Painel interativo, só com SELECT em `marts.vendas_mes_loja_produto` e `marts.cobertura_estoque` |
 
 ## Contagens
 
@@ -67,7 +80,8 @@ Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts de ve
   vazia do gráfico ou em *Restaurar filtros* para limpar.
 - **Estoque**: contagem por status e tabela dos itens em ruptura, críticos e sem registro,
   a partir de `marts.cobertura_estoque` (média de vendas dos últimos 90 dias do dado).
-  Responde a cidade, tipo de localização e categoria, mas não aos meses. Status, na carga real:
+  Reage aos filtros de cidade, tipo de localização e categoria, mas não ao de meses, porque
+  o estoque não tem data. Status, na carga real:
 
   | Status | Regra | Pares |
   |---|---|---:|
@@ -108,7 +122,10 @@ Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts de ve
   porque a consulta usava `GROUP BY ALL` só com `count(*)`. Recontado com `DISTINCT`, deu 0.
 - **Hipótese da spec sobre estoque.** A spec supunha que estoque ausente significava
   "produto não vendido na loja". A hipótese caiu na conferência: 41 pares loja × produto
-  vendidos não estão no estoque, 24 deles do Jenga.
+  vendidos não estão no estoque, 24 deles do Jenga. Contado no banco: 23 desses 41 tiveram
+  venda na janela de 90 dias do mart 07, todos de Jenga, e são os 23 com status
+  `sem registro`. Os outros 18 (17 pares de produtos que pararam de vender entre 02/2017 e
+  03/2018 e 1 par de Jenga) só venderam antes da janela e ficam fora do mart.
 - **Status da spec.** A spec ficou marcada como "pendente de aprovação" depois de a decisão
   já estar aplicada no código.
 - **Painel.** Nomes de loja cortados, marcadores da classe C quase invisíveis, gráfico
@@ -119,16 +136,19 @@ Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts de ve
 - **Teste que não testava.** Trocar `CAST` por `TRY_CAST` na refined não fez nenhum teste
   falhar, porque o `NOT NULL` ainda bloqueava a carga. Só falhou quando as duas proteções
   foram removidas juntas.
-- **Painel estático.** A primeira versão do painel saiu estática e sem filtros. Pego por
-  Wendislau na revisão.
+- **Painel estático.** A primeira versão do painel saiu estática e sem filtros. Pego na revisão
+  humana.
 - **Testes que não eram unitários.** Os testes abriam o banco real (`toys.duckdb`) e
-  conferiam números fixos, ao contrário do que a aula 4 pede. Pego por Wendislau na revisão;
+  conferiam números fixos, ao contrário do que se espera de teste unitário. Pego na revisão humana;
   daí a separação entre `tests/unit/` (unitários, com dado inventado) e `tests/quality/` (qualidade do dado).
 
 ## Origem e licença
 
 Os dados são o **Mexico Toy Sales**, da Maven Analytics, obtidos via Kaggle:
 <https://www.kaggle.com/datasets/mysarahmadbhat/toy-sales>.
+Licença: [CC0: Public Domain](https://creativecommons.org/publicdomain/zero/1.0/), como
+declarada na página do dataset no Kaggle.
+O upload no Kaggle é de terceiro; os dados são originalmente da Maven Analytics.
 Os arquivos são redistribuídos comprimidos em `raw/` (`.csv.gz`), sem alteração no conteúdo.
 
 Os `.csv.gz` ficam versionados em `raw/` de propósito, como no repositório do curso: são
