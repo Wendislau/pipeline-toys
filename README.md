@@ -1,6 +1,6 @@
 # pipeline-toys
 
-Projeto da aceleração EmpregaDados, inspirado no pipeline-olist. Stack: Python, DuckDB, SQL,
+Projeto da aceleração EmpregaDados, inspirado no pipeline-olist(https://github.com/ckoliveiraa/pipeline-olist). Stack: Python, DuckDB, SQL,
 pytest, Streamlit e uv. Construído com IA como copiloto e revisão humana de cada etapa.
 
 ![Painel em Streamlit: filtros na barra lateral, KPIs de receita, margem e unidades e a evolução mensal da receita](docs/painel.png)
