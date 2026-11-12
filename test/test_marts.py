@@ -105,6 +105,7 @@ PRODUTOS_ESTOQUE = [
     ["4", "Borda", "Games", "$1.00 ", "$2.00 "],
     ["5", "Parado", "Games", "$1.00 ", "$2.00 "],
     ["6", "ForaEstoque", "Games", "$1.00 ", "$2.00 "],
+    ["7", "ForaAntigo", "Games", "$1.00 ", "$2.00 "],
 ]
 LOJA_ESTOQUE = [["1", "Loja A", "Guadalajara", "Downtown", "2010-01-01"]]
 ESTOQUE_07 = [
@@ -116,9 +117,11 @@ ESTOQUE_07 = [
     ["1", "3", "7"],
     # Produto 4: testa as bordas da janela (ver vendas) -> 100 dias -> 'ok'.
     ["1", "4", "50"],
-    # Produto 5: estoque sem venda na janela -> média zero, dias NULL, 'ok'.
+    # Produto 5: estoque sem venda na janela -> média zero, dias NULL, 'sem demanda'.
     ["1", "5", "5"],
-    # Produto 6 fica fora do estoque de propósito: vende, mas não pode aparecer no mart.
+    # Produto 6 fica fora do estoque de propósito: vende na janela -> 'sem registro',
+    #   com stock_on_hand NULL (a ausência não vira zero).
+    # Produto 7 também fica fora do estoque, mas só vendeu antes da janela -> não aparece.
 ]
 VENDAS_07 = [
     # (sale_id, data, loja, produto, unidades)
@@ -147,27 +150,44 @@ VENDAS_07 = [
         "20",
     ],  # venda antiga: fora da janela, média continua zero
     ["7", "2018-09-30", "1", "6", "1"],  # define o fim do dado; par fora do estoque
+    ["8", "2018-09-01", "1", "6", "8"],  # par fora do estoque: 9 unidades na janela
+    ["9", "2017-05-01", "1", "7", "30"],  # fora do estoque e fora da janela: não entra
 ]
 
 
 def esperado_cobertura():
     """Regra do mart refeita em Python a partir das linhas inventadas."""
-    esperado = {}
-    for _, produto, estoque in ESTOQUE_07:
-        unidades = sum(
+
+    def unidades_janela(produto):
+        return sum(
             int(u)
             for _, data, _, p, u in VENDAS_07
             if p == produto and INICIO_JANELA <= date.fromisoformat(data) <= FIM
         )
-        media = unidades / 90
+
+    esperado = {}
+    for _, produto, estoque in ESTOQUE_07:
+        media = unidades_janela(produto) / 90
         dias = int(estoque) / media if media else None
         if int(estoque) == 0:
             status = "ruptura"
-        elif dias is not None and dias < 7:
+        elif media == 0:
+            status = "sem demanda"
+        elif dias < 7:
             status = "critico"
         else:
             status = "ok"
         esperado[int(produto)] = (int(estoque), media, dias, status)
+    # Pares vendidos na janela e ausentes do estoque: estoque e dias NULL, 'sem registro'.
+    no_estoque = {p for _, p, _ in ESTOQUE_07}
+    for produto, *_ in PRODUTOS_ESTOQUE:
+        if produto not in no_estoque and unidades_janela(produto):
+            esperado[int(produto)] = (
+                None,
+                unidades_janela(produto) / 90,
+                None,
+                "sem registro",
+            )
     return esperado
 
 
@@ -195,14 +215,19 @@ def test_cobertura_estoque_status_e_janela_de_90_dias(monkeypatch, tmp_path):
     }
 
     esperado = esperado_cobertura()
-    assert (
-        obtido.keys() == esperado.keys()
-    )  # só pares do estoque: produto 6 não aparece
+    # Produto 6 (sem registro, vendeu na janela) entra; produto 7 (só venda antiga) não.
+    assert obtido.keys() == esperado.keys() == {1, 2, 3, 4, 5, 6}
     for pid, (estoque, media, dias, status) in esperado.items():
         o_estoque, o_media, o_dias, o_status = obtido[pid]
         assert (o_estoque, o_status) == (estoque, status), pid
         assert o_media == pytest.approx(media), pid
         assert o_dias == (None if dias is None else pytest.approx(dias)), pid
-    # Os quatro casos pedidos estão cobertos pelo dado inventado.
-    assert {s for *_, s in esperado.values()} == {"ruptura", "critico", "ok"}
-    assert any(media == 0 for _, media, _, _ in esperado.values())
+    # Todos os status estão cobertos pelo dado inventado.
+    assert {s for *_, s in esperado.values()} == {
+        "ruptura",
+        "critico",
+        "ok",
+        "sem demanda",
+        "sem registro",
+    }
+    assert obtido[6][0] is None and obtido[6][2] is None  # sem registro: NULL, não zero

@@ -50,7 +50,7 @@ dados novos antes disso, use *Clear cache* no menu do Streamlit.
 | marts.pareto_produtos | 35 |
 | marts.receita_por_tipo_localizacao | 4 |
 | marts.vendas_mes_loja_produto | 22.931 |
-| marts.cobertura_estoque | 1.593 |
+| marts.cobertura_estoque | 1.616 |
 
 Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts de vendas
 (`cobertura_estoque` é de estoque e não tem receita).
@@ -65,9 +65,18 @@ Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts de ve
 - **Evolução mensal**: alterna receita / margem / unidades e pode quebrar por categoria.
 - **Clique numa barra de receita por categoria** filtra o resto do painel; clique numa área
   vazia do gráfico ou em *Restaurar filtros* para limpar.
-- **Estoque**: contagem por status (ruptura, crítico < 7 dias de cobertura, ok) e tabela dos
-  itens em ruptura e críticos, a partir de `marts.cobertura_estoque` (média de vendas dos
-  últimos 90 dias do dado). Responde a cidade, tipo de localização e categoria, mas não aos meses.
+- **Estoque**: contagem por status e tabela dos itens em ruptura, críticos e sem registro,
+  a partir de `marts.cobertura_estoque` (média de vendas dos últimos 90 dias do dado).
+  Responde a cidade, tipo de localização e categoria, mas não aos meses. Status, na carga real:
+
+  | Status | Regra | Pares |
+  |---|---|---:|
+  | ruptura | estoque zero | 77 |
+  | crítico | menos de 7 dias de cobertura | 289 |
+  | ok | 7 dias ou mais de cobertura | 1.134 |
+  | sem demanda | há estoque, mas nenhuma venda nos últimos 90 dias | 93 |
+  | sem registro | vendido nos últimos 90 dias e ausente de `refined.inventory`; estoque NULL, não zero (todos os 23 são Jenga) | 23 |
+
 - Cada seção tem *Ver tabela*, com mês em MM/AAAA, % e US$ com separador de milhar.
 
 ## Premissas
@@ -91,7 +100,7 @@ Receita total: **US$ 14.444.572,35**, igual em refined e em todos os marts de ve
 | marts.pareto_produtos | um produto | `product_id` |
 | marts.receita_por_tipo_localizacao | um tipo de localização da loja | `tipo_localizacao` |
 | marts.vendas_mes_loja_produto | um mês × loja × produto com pelo menos uma venda | `mes, store_id, product_id` |
-| marts.cobertura_estoque | um par loja × produto do estoque | `store_id, product_id` |
+| marts.cobertura_estoque | um par loja × produto do estoque, ou vendido nos últimos 90 dias sem registro no estoque | `store_id, product_id` |
 
 ## Onde a IA errou (e como foi pego)
 

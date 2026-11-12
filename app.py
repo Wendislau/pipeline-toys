@@ -610,8 +610,9 @@ st.subheader("Estoque")
 st.caption(
     "O estoque é uma foto do fim do período, sem data, comparada com a média diária de "
     "vendas dos últimos 90 dias do dado. Os filtros de cidade, tipo de localização e "
-    "categoria valem aqui; o de meses não. Pares vendidos sem registro no estoque "
-    "(ex.: Jenga em 24 lojas) não aparecem."
+    "categoria valem aqui; o de meses não. *Sem registro*: par vendido nos últimos 90 "
+    "dias que não existe no arquivo de estoque (na carga real, Jenga em 23 lojas); o "
+    "estoque fica vazio, não zero. *Sem demanda*: há estoque, mas nenhuma venda em 90 dias."
 )
 where_estoque = (
     "list_contains(?::VARCHAR[], cidade) "
@@ -624,13 +625,14 @@ por_status = consulta(
     params_estoque,
 )
 itens_por_status = dict(zip(por_status["status"], por_status["itens"]))
-e1, e2, e3 = st.columns(3)
 for coluna, (status, rotulo) in zip(
-    (e1, e2, e3),
+    st.columns(5),
     [
         ("ruptura", "Em ruptura (estoque zero)"),
         ("critico", "Crítico (< 7 dias)"),
         ("ok", "OK"),
+        ("sem demanda", "Sem demanda (90 dias)"),
+        ("sem registro", "Sem registro de estoque"),
     ],
 ):
     coluna.metric(rotulo, br(f"{itens_por_status.get(status, 0):,}"), border=True)
@@ -641,12 +643,15 @@ alertas = consulta(
            stock_on_hand, unidades_90d,
            media_diaria_unidades, dias_cobertura
     FROM {MART_ESTOQUE}
-    WHERE status IN ('ruptura', 'critico') AND {where_estoque}
-    ORDER BY status DESC, dias_cobertura, loja, produto
+    WHERE status IN ('ruptura', 'critico', 'sem registro') AND {where_estoque}
+    ORDER BY CASE status WHEN 'ruptura' THEN 1 WHEN 'critico' THEN 2 ELSE 3 END,
+             dias_cobertura, loja, produto
     """,
     params_estoque,
 )
-st.markdown(f"**Itens em ruptura e críticos** ({br(f'{len(alertas):,}')})")
+st.markdown(
+    f"**Itens em ruptura, críticos e sem registro de estoque** ({br(f'{len(alertas):,}')})"
+)
 st.dataframe(
     alertas,
     hide_index=True,

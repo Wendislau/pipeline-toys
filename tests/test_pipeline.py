@@ -26,7 +26,7 @@ CONTAGENS = {
     "marts.pareto_produtos": 35,
     "marts.receita_por_tipo_localizacao": 4,
     "marts.vendas_mes_loja_produto": 22_931,
-    "marts.cobertura_estoque": 1_593,
+    "marts.cobertura_estoque": 1_616,
 }
 
 CHAVES = {

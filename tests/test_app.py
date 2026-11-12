@@ -67,20 +67,27 @@ def test_evolucao_mensal_alterna_metrica_e_quebra(app, metrica, por_categoria):
     assert not at.exception
 
 
+ROTULOS_ESTOQUE = ("Em ruptura", "Crítico", "OK", "Sem demanda", "Sem registro")
+
+
 def test_secao_estoque_conta_status_e_respeita_filtro(app):
     at = app.run()
     assert "Estoque" in [s.value for s in at.subheader]
     total = sum(
         int(m.value.replace(".", ""))
         for m in at.metric
-        if m.label.startswith(("Em ruptura", "Crítico", "OK"))
+        if m.label.startswith(ROTULOS_ESTOQUE)
     )
-    assert total == 1_593  # todos os pares do estoque, sem filtro
+    assert total == 1_616  # 1.593 pares do estoque + 23 sem registro, sem filtro
+    m = metricas(at)
+    # 23 = Jenga vendido nos últimos 90 dias e ausente do arquivo de estoque.
+    assert m["Sem registro de estoque"][0] == "23"
+    assert m["Sem demanda (90 dias)"][0] == "93"
     at.multiselect(key="f_categorias").set_value(["Electronics"]).run()
     assert not at.exception
     total_filtrado = sum(
         int(m.value.replace(".", ""))
         for m in at.metric
-        if m.label.startswith(("Em ruptura", "Crítico", "OK"))
+        if m.label.startswith(ROTULOS_ESTOQUE)
     )
     assert 0 < total_filtrado < total

@@ -1,5 +1,6 @@
--- Grão: uma linha por loja × produto presente em refined.inventory (1 linha por par do estoque).
---   Pares vendidos que não estão no estoque (ex.: Jenga em 24 lojas) ficam de fora;
+-- Grão: uma linha por loja × produto presente em refined.inventory, mais uma linha por par
+--   com venda na janela de 90 dias e sem registro no estoque (na carga real, 23 pares, todos
+--   de Jenga). Pares ausentes do estoque sem venda na janela ficam de fora;
 --   ver specs/refined.md, seção de cobertura do inventory.
 -- Janela: últimos 90 dias do dado, terminando na última data de venda (2018-09-30 na carga
 --   real): sale_date entre fim − 89 dias e fim, inclusive.
@@ -7,9 +8,15 @@
 --   saber quanto ele dura é a recente, não a média de 2017–2018 inteiro.
 -- Regras:
 --   media_diaria_unidades = unidades vendidas na janela / 90 (dias sem venda contam como zero).
---   dias_cobertura = stock_on_hand / media_diaria_unidades; NULL quando a média é zero.
---   status: 'ruptura' se stock_on_hand = 0; 'critico' se dias_cobertura < 7; 'ok' no resto
---     (inclui estoque > 0 sem venda na janela, em que dias_cobertura é NULL).
+--   dias_cobertura = stock_on_hand / media_diaria_unidades; NULL quando a média é zero ou
+--     quando não há registro de estoque.
+--   status, nesta ordem:
+--     'sem registro' se o par vendeu na janela e não existe em refined.inventory
+--       (stock_on_hand NULL: a ausência não é lida como zero, conforme a spec);
+--     'ruptura' se stock_on_hand = 0;
+--     'sem demanda' se há estoque e a média diária é zero (nenhuma venda na janela);
+--     'critico' se dias_cobertura < 7;
+--     'ok' no resto.
 WITH fim AS (
     SELECT max(sale_date) AS fim FROM refined.sales
 ),
@@ -28,6 +35,16 @@ cobertura AS (
         coalesce(v.unidades_90d, 0) / 90                    AS media_diaria_unidades
     FROM refined.inventory i
     LEFT JOIN vendas_janela v USING (store_id, product_id)
+    UNION ALL
+    -- Pares vendidos na janela sem registro no estoque: entram com stock_on_hand NULL.
+    SELECT
+        v.store_id,
+        v.product_id,
+        NULL::INTEGER                                       AS stock_on_hand,
+        v.unidades_90d,
+        v.unidades_90d / 90                                 AS media_diaria_unidades
+    FROM vendas_janela v
+    ANTI JOIN refined.inventory i USING (store_id, product_id)
 )
 SELECT
     c.store_id,
@@ -42,7 +59,9 @@ SELECT
     c.media_diaria_unidades,
     c.stock_on_hand / nullif(c.media_diaria_unidades, 0)    AS dias_cobertura,
     CASE
+        WHEN c.stock_on_hand IS NULL THEN 'sem registro'
         WHEN c.stock_on_hand = 0 THEN 'ruptura'
+        WHEN c.media_diaria_unidades = 0 THEN 'sem demanda'
         WHEN c.stock_on_hand / nullif(c.media_diaria_unidades, 0) < 7 THEN 'critico'
         ELSE 'ok'
     END                                                     AS status
